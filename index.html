@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Encuesta Comuna 4 - Aranjuez</title>
+
+  <!-- CSS de Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: Arial, sans-serif; }
+    #map { height: 100vh; width: 100vw; background: #e0e0e0; }
+
+    /* Estilos del Popup */
+    .leaflet-popup-content-wrapper { padding: 12px; border-radius: 12px; }
+    .leaflet-popup-content { margin: 0; width: 340px !important; }
+    
+    .contenedor-iframe {
+      position: relative;
+      width: 100%;
+      height: 460px;
+    }
+
+    iframe { border: none; border-radius: 8px; width: 100%; height: 100%; }
+
+    /* CAPA INVISIBLE AMPLIADA QUE BLOQUEA TOTALMENTE LA EDICIÓN DE LA DIRECCIÓN */
+    .bloqueo-direccion-overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 185px; /* Altura aumentada para cubrir la pregunta completa de dirección */
+      z-index: 999;
+      background: rgba(255, 255, 255, 0.01);
+      cursor: not-allowed;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Encabezado con la dirección corta */
+    .caja-direccion {
+      background: #f1f8e9;
+      border: 1px solid #c8e6c9;
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    .titulo-direccion {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #2e7d32;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+    .texto-direccion {
+      font-size: 13px;
+      color: #2c3e50;
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    /* Mapa en escala de grises */
+    .mapa-gris .leaflet-tile-pane {
+      filter: grayscale(100%) contrast(90%) brightness(105%);
+    }
+
+    /* MODAL INICIAL DE BIENVENIDA */
+    #capa-oscura-bienvenida {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(3px);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #modal-bienvenida {
+      background: #ffffff;
+      padding: 28px 24px;
+      border-radius: 18px;
+      box-shadow: 0 12px 35px rgba(0,0,0,0.35);
+      text-align: center;
+      max-width: 85%;
+      width: 360px;
+      animation: aparecer 0.3s ease-out;
+    }
+    #modal-bienvenida h2 { margin-top: 0; color: #1976d2; font-size: 20px; margin-bottom: 12px; }
+    #modal-bienvenida p { color: #424242; font-size: 14px; line-height: 1.5; margin-bottom: 22px; }
+    .btn-comenzar {
+      background-color: #1976d2;
+      color: white;
+      border: none;
+      padding: 12px 28px;
+      font-size: 15px;
+      font-weight: bold;
+      border-radius: 25px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+    }
+
+    @keyframes aparecer {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    /* CAPA DE BLOQUEO Y PANTALLA DE AGRADECIMIENTO FINAL */
+    #capa-bloqueo-final {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 20000;
+      align-items: center;
+      justify-content: center;
+    }
+    #mensaje-exito {
+      background: #ffffff;
+      padding: 32px 28px;
+      border-radius: 18px;
+      box-shadow: 0 12px 35px rgba(0,0,0,0.4);
+      text-align: center;
+      max-width: 85%;
+      width: 340px;
+    }
+    #mensaje-exito h2 { color: #2e7d32; margin-top: 0; font-size: 22px; margin-bottom: 10px; }
+    #mensaje-exito p { color: #333333; font-size: 15px; margin: 0; line-height: 1.4; }
+
+    /* Notificación fuera de rango */
+    #alerta-fuera {
+      display: none;
+      position: fixed;
+      bottom: 20px; left: 50%;
+      transform: translateX(-50%);
+      background: #d32f2f;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 25px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      z-index: 9999;
+      font-weight: bold;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body class="mapa-gris">
+
+  <!-- Modal de Bienvenida -->
+  <div id="capa-oscura-bienvenida">
+    <div id="modal-bienvenida">
+      <h2>📍 Encuesta Comuna 4 (Aranjuez)</h2>
+      <p>Por favor, <b>selecciona en el mapa el punto o la ubicación exacta</b> dentro de la Comuna 4 que deseas reportar.</p>
+      <button class="btn-comenzar" onclick="cerrarBienvenida()">Comenzar / Entendido</button>
+    </div>
+  </div>
+
+  <div id="map"></div>
+
+  <div id="alerta-fuera">Debes seleccionar un punto DENTRO de la Comuna 4</div>
+
+  <!-- Capa con el cartel final de Despedida -->
+  <div id="capa-bloqueo-final">
+    <div id="mensaje-exito">
+      <h2>¡Muchas gracias!</h2>
+      <p>Su respuesta ha sido registrada exitosamente.</p>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
+  <script>
+    function cerrarBienvenida() {
+      document.getElementById('capa-oscura-bienvenida').style.display = 'none';
+    }
+
+    function mostrarPantallaBloqueo() {
+      map.closePopup();
+      var capaFinal = document.getElementById('capa-bloqueo-final');
+      capaFinal.style.display = 'flex';
+      document.getElementById('map').style.pointerEvents = 'none';
+    }
+
+    // 1. LÍMITES DE VISUALIZACIÓN EN ARANJUEZ
+    var limitesVista = L.latLngBounds(
+      L.latLng(6.2600, -75.5850),
+      L.latLng(6.3000, -75.5350)
+    );
+
+    var map = L.map('map', {
+      center: [6.2810, -75.5600],
+      zoom: 15,
+      minZoom: 14,
+      maxZoom: 18,
+      maxBounds: limitesVista,
+      maxBoundsViscosity: 0.8
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // 2. ENLACE BASE DE GOOGLE FORMS
+    var urlGoogleFormsBase = "https://docs.google.com/forms/d/e/1FAIpQLScPS8p1vE0tUnsEW-xro2pjV4ej6i8QrShK4T41_ArmTwouPw/viewform";
+    var idEntradaDireccion = "entry.561800491";
+
+    var popup = L.popup();
+    var capaComunaGeoJSON = null;
+
+    // 3. CARGAR ARCHIVO GEOJSON
+    fetch('comuna4.geojson')
+      .then(response => response.json())
+      .then(data => {
+        capaComunaGeoJSON = data;
+
+        L.geoJSON(data, {
+          style: {
+            color: '#1976d2',
+            weight: 3,
+            fillColor: '#2196f3',
+            fillOpacity: 0.25
+          }
+        }).addTo(map);
+      })
+      .catch(err => console.error("Error al cargar GeoJSON:", err));
+
+    // 4. VALIDACIÓN DE PUNTO DENTRO DE LA COMUNA 4
+    function estaDentroDeComuna(lat, lng) {
+      if (!capaComunaGeoJSON) return true;
+
+      var punto = turf.point([lng, lat]);
+      var dentro = false;
+
+      turf.geomEach(capaComunaGeoJSON, function (geometriaActual) {
+        if (turf.booleanPointInPolygon(punto, geometriaActual)) {
+          dentro = true;
+        }
+      });
+
+      return dentro;
+    }
+
+    // 5. OBTENER DIRECCIÓN (Corta para la vista, Completa para Google Forms)
+    function obtenerDireccion(lat, lng, callback) {
+      var url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
+      
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          var via = "";
+          var numero = "";
+          var barrio = "Aranjuez";
+
+          if (data && data.address) {
+            via = data.address.road || data.address.pedestrian || "";
+            numero = data.address.house_number || "";
+            barrio = data.address.suburb || data.address.neighbourhood || "Aranjuez";
+          }
+
+          var vistaCorta = "";
+          var datoCompletoGoogle = "";
+
+          if (via && numero) {
+            vistaCorta = `${via} #${numero}, ${barrio}`;
+            datoCompletoGoogle = `${via} #${numero}, Barrio ${barrio} (Comuna 4) [${lat.toFixed(5)}, ${lng.toFixed(5)}]`;
+          } else if (via) {
+            vistaCorta = `${via}, ${barrio}`;
+            datoCompletoGoogle = `${via}, Barrio ${barrio} (Comuna 4) [${lat.toFixed(5)}, ${lng.toFixed(5)}]`;
+          } else {
+            vistaCorta = `Barrio ${barrio}, Comuna 4`;
+            datoCompletoGoogle = `Barrio ${barrio}, Comuna 4 [${lat.toFixed(5)}, ${lng.toFixed(5)}]`;
+          }
+
+          callback(vistaCorta, datoCompletoGoogle);
+        })
+        .catch(() => {
+          var textoFallback = `Comuna 4 - Aranjuez [${lat.toFixed(5)}, ${lng.toFixed(5)}]`;
+          callback("Comuna 4 - Aranjuez", textoFallback);
+        });
+    }
+
+    // 6. EVENTO CLIC EN EL MAPA
+    map.on('click', function(e) {
+      var lat = e.latlng.lat;
+      var lng = e.latlng.lng;
+
+      if (!estaDentroDeComuna(lat, lng)) {
+        var alerta = document.getElementById('alerta-fuera');
+        alerta.style.display = 'block';
+        setTimeout(() => { alerta.style.display = 'none'; }, 3000);
+        return;
+      }
+
+      obtenerDireccion(lat, lng, function(direccionCorta, direccionGoogle) {
+        var dirCodificada = encodeURIComponent(direccionGoogle);
+        var urlConPrefill = `${urlGoogleFormsBase}?embedded=true&usp=pp_url&${idEntradaDireccion}=${dirCodificada}`;
+
+        popup
+          .setLatLng(e.latlng)
+          .setContent(`
+            <div style="text-align:center;">
+              <div class="caja-direccion">
+                <div class="titulo-direccion">UBICACIÓN SELECCIONADA</div>
+                <div class="texto-direccion">${direccionCorta}</div>
+              </div>
+              <div class="contenedor-iframe">
+                <div class="bloqueo-direccion-overlay"></div>
+                <iframe id="google-iframe" src="${urlConPrefill}"></iframe>
+              </div>
+            </div>
+          `)
+          .openOn(map);
+
+        // DETECTOR AUTOMÁTICO DE ENVÍO CON FILTRO DE TIEMPO
+        var formularioInicializado = false;
+
+        setTimeout(function() {
+          formularioInicializado = true;
+        }, 7000);
+
+        var iframe = document.getElementById('google-iframe');
+        if (iframe) {
+          iframe.addEventListener('load', function() {
+            if (formularioInicializado) {
+              mostrarPantallaBloqueo();
+            }
+          });
+        }
+      });
+    });
+  </script>
+</body>
+</html>

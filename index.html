@@ -13,7 +13,7 @@
     #map { height: 100vh; width: 100vw; background: #e0e0e0; }
 
     /* Estilos del Popup */
-    .leaflet-popup-content-wrapper { padding: 12px; border-radius: 12px; }
+    .leaflet-popup-content-wrapper { padding: 10px; border-radius: 12px; }
     .leaflet-popup-content { margin: 0; width: 340px !important; }
     
     .contenedor-iframe {
@@ -24,15 +24,17 @@
 
     iframe { border: none; border-radius: 8px; width: 100%; height: 100%; }
 
-    /* CAPA INVISIBLE AMPLIADA QUE BLOQUEA TOTALMENTE LA EDICIÓN DE LA DIRECCIÓN */
+    /* CAPA INVISIBLE DE BLOQUEO ABSOLUTO PARA LA DIRECCIÓN */
     .bloqueo-direccion-overlay {
       position: absolute;
-      top: 0; left: 0;
+      top: 0; 
+      left: 0;
       width: 100%;
-      height: 185px; /* Altura aumentada para cubrir la pregunta completa de dirección */
-      z-index: 999;
-      background: rgba(255, 255, 255, 0.01);
+      height: 230px; /* Altura suficiente para cubrir el título y la pregunta completa */
+      z-index: 999999;
+      background: rgba(255, 255, 255, 0.001);
       cursor: not-allowed;
+      pointer-events: auto !important;
       user-select: none;
       -webkit-user-select: none;
     }
@@ -205,27 +207,29 @@
       attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // 2. ENLACE BASE DE GOOGLE FORMS
+    // 2. ENLACE BASE DE GOOGLE FORMS Y SU VARIABLE DEDICADA
     var urlGoogleFormsBase = "https://docs.google.com/forms/d/e/1FAIpQLScPS8p1vE0tUnsEW-xro2pjV4ej6i8QrShK4T41_ArmTwouPw/viewform";
     var idEntradaDireccion = "entry.561800491";
 
     var popup = L.popup();
     var capaComunaGeoJSON = null;
 
-    // 3. CARGAR ARCHIVO GEOJSON
+    // 3. CARGAR Y DIBUJAR EL POLÍGONO DE LA COMUNA 4
     fetch('comuna4.geojson')
       .then(response => response.json())
       .then(data => {
         capaComunaGeoJSON = data;
 
-        L.geoJSON(data, {
+        var capaGeo = L.geoJSON(data, {
           style: {
-            color: '#1976d2',
+            color: '#1565c0',
             weight: 3,
-            fillColor: '#2196f3',
-            fillOpacity: 0.25
+            fillColor: '#1e88e5',
+            fillOpacity: 0.3
           }
         }).addTo(map);
+
+        capaGeo.bringToFront();
       })
       .catch(err => console.error("Error al cargar GeoJSON:", err));
 
@@ -316,7 +320,7 @@
           `)
           .openOn(map);
 
-        // DETECTOR AUTOMÁTICO DE ENVÍO CON FILTRO DE TIEMPO
+        // DETECTOR AUTOMÁTICO DE ENVÍO CON FILTRO
         var formularioInicializado = false;
 
         setTimeout(function() {

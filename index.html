@@ -117,7 +117,7 @@
       animation: aparecer 0.3s ease-out;
     }
     #mensaje-exito h2 { color: #2e7d32; margin-top: 0; font-size: 22px; margin-bottom: 10px; }
-    #mensaje-exito p { color: #333333; font-size: 15px; margin: 0 0 20px 0; line-height: 1.4; }
+    #mensaje-exito p { color: #333333; font-size: 15px; margin: 0; line-height: 1.4; }
 
     /* Notificación fuera de rango */
     #alerta-fuera {
@@ -156,7 +156,6 @@
     <div id="mensaje-exito">
       <h2>¡Muchas gracias!</h2>
       <p>Su respuesta ha sido registrada exitosamente.</p>
-      <button class="btn-comenzar" onclick="cerrarPantallaFinal()">Realizar otro reporte</button>
     </div>
   </div>
 
@@ -172,10 +171,7 @@
       map.closePopup();
       var capaFinal = document.getElementById('capa-bloqueo-final');
       capaFinal.style.display = 'flex';
-    }
-
-    function cerrarPantallaFinal() {
-      document.getElementById('capa-bloqueo-final').style.display = 'none';
+      document.getElementById('map').style.pointerEvents = 'none';
     }
 
     // 1. LÍMITES DE VISUALIZACIÓN EN ARANJUEZ

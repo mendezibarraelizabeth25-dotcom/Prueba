@@ -234,7 +234,7 @@
       return dentro;
     }
 
-    // 5. OBTENER DIRECCIÓN Y COORDENADAS (FORMATO LIMPIO)
+    // 5. OBTENER DIRECCIÓN Y COORDENADAS (FORMATO CON COMUNA)
     function obtenerDireccion(lat, lng, callback) {
       var url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
       
@@ -253,10 +253,10 @@
           var datoCompleto = "";
 
           if (via && numero) {
-            vistaCorta = `${via} #${numero}`;
+            vistaCorta = `${via} #${numero}, Comuna 4 - Aranjuez`;
             datoCompleto = `${via} #${numero}, Comuna 4 - Aranjuez [${lat.toFixed(5)}, ${lng.toFixed(5)}]`;
           } else if (via) {
-            vistaCorta = `${via}`;
+            vistaCorta = `${via}, Comuna 4 - Aranjuez`;
             datoCompleto = `${via}, Comuna 4 - Aranjuez [${lat.toFixed(5)}, ${lng.toFixed(5)}]`;
           } else {
             vistaCorta = `Comuna 4 - Aranjuez`;

@@ -19,25 +19,10 @@
     .contenedor-iframe {
       position: relative;
       width: 100%;
-      height: 460px;
+      height: 480px;
     }
 
     iframe { border: none; border-radius: 8px; width: 100%; height: 100%; }
-
-    /* CAPA INVISIBLE DE BLOQUEO ABSOLUTO PARA LA DIRECCIÓN */
-    .bloqueo-direccion-overlay {
-      position: absolute;
-      top: 0; 
-      left: 0;
-      width: 100%;
-      height: 230px; /* Altura suficiente para cubrir el título y la pregunta completa */
-      z-index: 999999;
-      background: rgba(255, 255, 255, 0.001);
-      cursor: not-allowed;
-      pointer-events: auto !important;
-      user-select: none;
-      -webkit-user-select: none;
-    }
 
     /* Encabezado con la dirección corta */
     .caja-direccion {
@@ -109,30 +94,6 @@
       to { opacity: 1; transform: scale(1); }
     }
 
-    /* CAPA DE BLOQUEO Y PANTALLA DE AGRADECIMIENTO FINAL */
-    #capa-bloqueo-final {
-      display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100vw; height: 100vh;
-      background: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(4px);
-      z-index: 20000;
-      align-items: center;
-      justify-content: center;
-    }
-    #mensaje-exito {
-      background: #ffffff;
-      padding: 32px 28px;
-      border-radius: 18px;
-      box-shadow: 0 12px 35px rgba(0,0,0,0.4);
-      text-align: center;
-      max-width: 85%;
-      width: 340px;
-    }
-    #mensaje-exito h2 { color: #2e7d32; margin-top: 0; font-size: 22px; margin-bottom: 10px; }
-    #mensaje-exito p { color: #333333; font-size: 15px; margin: 0; line-height: 1.4; }
-
     /* Notificación fuera de rango */
     #alerta-fuera {
       display: none;
@@ -165,27 +126,12 @@
 
   <div id="alerta-fuera">Debes seleccionar un punto DENTRO de la Comuna 4</div>
 
-  <!-- Capa con el cartel final de Despedida -->
-  <div id="capa-bloqueo-final">
-    <div id="mensaje-exito">
-      <h2>¡Muchas gracias!</h2>
-      <p>Su respuesta ha sido registrada exitosamente.</p>
-    </div>
-  </div>
-
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 
   <script>
     function cerrarBienvenida() {
       document.getElementById('capa-oscura-bienvenida').style.display = 'none';
-    }
-
-    function mostrarPantallaBloqueo() {
-      map.closePopup();
-      var capaFinal = document.getElementById('capa-bloqueo-final');
-      capaFinal.style.display = 'flex';
-      document.getElementById('map').style.pointerEvents = 'none';
     }
 
     // 1. LÍMITES DE VISUALIZACIÓN EN ARANJUEZ
@@ -207,9 +153,8 @@
       attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // 2. ENLACE BASE DE GOOGLE FORMS Y SU VARIABLE DEDICADA
-    var urlGoogleFormsBase = "https://docs.google.com/forms/d/e/1FAIpQLScPS8p1vE0tUnsEW-xro2pjV4ej6i8QrShK4T41_ArmTwouPw/viewform";
-    var idEntradaDireccion = "entry.561800491";
+    // 2. ENLACE BASE DE TALLY
+    var urlTallyBase = "https://tally.so/r/RGpzEQ";
 
     var popup = L.popup();
     var capaComunaGeoJSON = null;
@@ -249,7 +194,7 @@
       return dentro;
     }
 
-    // 5. OBTENER DIRECCIÓN (Corta para la vista, Completa para Google Forms)
+    // 5. OBTENER DIRECCIÓN Y COORDENADAS
     function obtenerDireccion(lat, lng, callback) {
       var url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
       
@@ -267,20 +212,20 @@
           }
 
           var vistaCorta = "";
-          var datoCompletoGoogle = "";
+          var datoCompleto = "";
 
           if (via && numero) {
             vistaCorta = `${via} #${numero}, ${barrio}`;
-            datoCompletoGoogle = `${via} #${numero}, Barrio ${barrio} (Comuna 4) [${lat.toFixed(5)}, ${lng.toFixed(5)}]`;
+            datoCompleto = `${via} #${numero}, Barrio ${barrio} (Comuna 4) [${lat.toFixed(5)}, ${lng.toFixed(5)}]`;
           } else if (via) {
             vistaCorta = `${via}, ${barrio}`;
-            datoCompletoGoogle = `${via}, Barrio ${barrio} (Comuna 4) [${lat.toFixed(5)}, ${lng.toFixed(5)}]`;
+            datoCompleto = `${via}, Barrio ${barrio} (Comuna 4) [${lat.toFixed(5)}, ${lng.toFixed(5)}]`;
           } else {
             vistaCorta = `Barrio ${barrio}, Comuna 4`;
-            datoCompletoGoogle = `Barrio ${barrio}, Comuna 4 [${lat.toFixed(5)}, ${lng.toFixed(5)}]`;
+            datoCompleto = `Barrio ${barrio}, Comuna 4 [${lat.toFixed(5)}, ${lng.toFixed(5)}]`;
           }
 
-          callback(vistaCorta, datoCompletoGoogle);
+          callback(vistaCorta, datoCompleto);
         })
         .catch(() => {
           var textoFallback = `Comuna 4 - Aranjuez [${lat.toFixed(5)}, ${lng.toFixed(5)}]`;
@@ -300,9 +245,11 @@
         return;
       }
 
-      obtenerDireccion(lat, lng, function(direccionCorta, direccionGoogle) {
-        var dirCodificada = encodeURIComponent(direccionGoogle);
-        var urlConPrefill = `${urlGoogleFormsBase}?embedded=true&usp=pp_url&${idEntradaDireccion}=${dirCodificada}`;
+      obtenerDireccion(lat, lng, function(direccionCorta, direccionCompleta) {
+        var dirCodificada = encodeURIComponent(direccionCompleta);
+        
+        // Pasa el dato al campo oculto "direccion" de Tally
+        var urlConPrefill = `${urlTallyBase}?direccion=${dirCodificada}`;
 
         popup
           .setLatLng(e.latlng)
@@ -313,28 +260,11 @@
                 <div class="texto-direccion">${direccionCorta}</div>
               </div>
               <div class="contenedor-iframe">
-                <div class="bloqueo-direccion-overlay"></div>
-                <iframe id="google-iframe" src="${urlConPrefill}"></iframe>
+                <iframe src="${urlConPrefill}"></iframe>
               </div>
             </div>
           `)
           .openOn(map);
-
-        // DETECTOR AUTOMÁTICO DE ENVÍO CON FILTRO
-        var formularioInicializado = false;
-
-        setTimeout(function() {
-          formularioInicializado = true;
-        }, 7000);
-
-        var iframe = document.getElementById('google-iframe');
-        if (iframe) {
-          iframe.addEventListener('load', function() {
-            if (formularioInicializado) {
-              mostrarPantallaBloqueo();
-            }
-          });
-        }
       });
     });
   </script>
